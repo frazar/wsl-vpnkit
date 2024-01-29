@@ -74,22 +74,50 @@ sudo VMEXEC_PATH=$(pwd)/wsl-vm GVPROXY_PATH=$(pwd)/wsl-gvproxy.exe ./wsl-vpnkit
 ### Setup systemd
 
 WSL versions 0.67.6 and later [support systemd](https://learn.microsoft.com/en-us/windows/wsl/wsl-config#systemd-support). Follow the instructions in the link to enable systemd support for your distro.
+If you are uncertain if systemd is enabled you can check with:
+```PowerShell
+ps -p 1 -o comm=
+```
+If systemd is enabled, the output of the above command should be "systemd".
 
-Create the service file and enable the service. Now `wsl-vpnkit.service` should start with your distro next time.
+To setup the systemd service:
 
+1. Create a systemd service that either (_i_) runs the wsl-vpnkit distro separately or (_ii_) runs the wsl-vpnkit software directly.
+
+    - If you want the wsl-vpnkit distro to be run separately, just run this command to define the systemd serice:
+        ```sh
+        wsl.exe -d wsl-vpnkit --cd /app cat /app/wsl-vpnkit.service | sudo tee /etc/systemd/system/wsl-vpnkit.service
+        ```
+
+    - If instead you want to run the wsl-vpnkit software directly
+
+        1.  Unpack the required software as mentioned in Section [Setup as a standalone script](#setup-as-a-standalone-script).
+        2.  Move the extracted files to a a directory of your choice, say "/path/to/extracted/files"
+        3.  `cd` to that directory
+        4.  Copy the wsl-vpnkit systemd service definition and open it with an editor
+            ```sh
+            sudo cp ./wsl-vpnkit.service /etc/systemd/system/
+            sudo nano /etc/systemd/system/wsl-vpnkit.service
+            ```
+        5. Remove the section "for wsl-vpnkit setup as a distro" and specify the installation directory
+           ```diff
+           -# for wsl-vpnkit setup as a distro
+           -ExecStart=/mnt/c/Windows/system32/wsl.exe -d wsl-vpnkit --cd /app wsl-vpnkit
+
+           +ExecStart=/path/to/extracted/files/wsl-vpnkit
+           +Environment=VMEXEC_PATH=/path/to/extracted/files/wsl-vm GVPROXY_PATH=/path/to/extracted/files/wsl-gvproxy.exe
+           ```
+2.  Set the service to run automatically at every startup, starting from the next
+    ```
+    sudo systemctl enable wsl-vpnkit
+    ```
+3.  Start the service manually for this session
+    ```sh
+    sudo systemctl start wsl-vpnkit
+    ```
+
+Now, to check the service status run
 ```sh
-# wsl-vpnkit setup as a distro
-wsl.exe -d wsl-vpnkit --cd /app cat /app/wsl-vpnkit.service | sudo tee /etc/systemd/system/wsl-vpnkit.service
-
-# copy and edit for wsl-vpnkit setup as a standalone script
-sudo cp ./wsl-vpnkit.service /etc/systemd/system/
-sudo nano /etc/systemd/system/wsl-vpnkit.service
-
-# enable the service
-sudo systemctl enable wsl-vpnkit
-
-# start and check the status of the service
-sudo systemctl start wsl-vpnkit
 systemctl status wsl-vpnkit
 ```
 
